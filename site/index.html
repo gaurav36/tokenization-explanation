@@ -1,0 +1,2249 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Tokenization Deep Dive</title>
+    <meta
+      name="description"
+      content="Beginner lab: how tokenization works, then word, subword, character, and byte level — with live BPE, WordPiece, and SentencePiece playgrounds."
+    />
+    <meta property="og:title" content="Tokenization Deep Dive" />
+    <meta
+      property="og:description"
+      content="Interactive token lab: how tokenization works, OOV, UTF-8, and in-browser BPE / WordPiece / SentencePiece."
+    />
+    <meta property="og:type" content="website" />
+    <meta
+      property="og:url"
+      content="https://gaurav36.github.io/tokenization-explainer/"
+    />
+    <meta
+      property="og:image"
+      content="https://gaurav36.github.io/tokenization-explainer/assets/og.png"
+    />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+    <link rel="alternate icon" href="assets/og.png" type="image/png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="css/main.css" />
+  </head>
+  <body>
+    <a class="skip" href="#syllabus">Skip to content</a>
+    <a
+      class="github-top-right"
+      href="https://github.com/gaurav36/tokenization-explanation"
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label="Open GitHub repository"
+    >
+      <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+        <path
+          d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.5-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.62 7.62 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"
+        ></path>
+      </svg>
+      <span>GitHub Repo</span>
+    </a>
+    <div class="app">
+      <nav class="nav" aria-label="Lesson sections">
+        <p class="nav-kicker">Token lab / 01</p>
+        <p class="nav-title">Tokenization</p>
+        <ol>
+          <li>
+            <a href="#syllabus"><span class="nav-num">01</span> Tokenization</a>
+          </li>
+          <li>
+            <a href="#taxonomy"><span class="nav-num">02</span> How it works</a>
+          </li>
+          <li>
+            <a href="#unicode"><span class="nav-num">03</span> Unicode &amp; UTF-8</a>
+          </li>
+          <li>
+            <a href="#lab"><span class="nav-num">04</span> Four-way lab</a>
+          </li>
+          <li>
+            <a href="#word"><span class="nav-num">05</span> Word level</a>
+          </li>
+          <li>
+            <a href="#subword"><span class="nav-num">06</span> Subword</a>
+          </li>
+          <li>
+            <a href="#bpe-how"><span class="nav-num">07</span> How BPE works</a>
+          </li>
+          <li>
+            <a href="#algo-labs"><span class="nav-num">08</span> Algorithm labs</a>
+          </li>
+          <li>
+            <a href="#character"><span class="nav-num">09</span> Character</a>
+          </li>
+          <li>
+            <a href="#byte"><span class="nav-num">10</span> Byte</a>
+          </li>
+          <li>
+            <a href="#length"><span class="nav-num">11</span> Vocab &amp; context</a>
+          </li>
+          <li>
+            <a href="#visuals"><span class="nav-num">12</span> Visuals</a>
+          </li>
+          <li>
+            <a href="#glossary"><span class="nav-num">13</span> Glossary</a>
+          </li>
+          <li>
+            <a href="#notebooks"><span class="nav-num">14</span> Notebooks</a>
+          </li>
+        </ol>
+        <p class="nav-note">
+          Production trainers live in Jupyter.<br />
+          <code>uv run jupyter lab notebooks</code>
+        </p>
+      </nav>
+
+      <main>
+        <header class="hero" id="syllabus">
+          <p class="hero-kicker">Token lab / 01</p>
+          <h1>Tokenization</h1>
+          <p class="hero-sub">Deep dive for AI engineers</p>
+          <div class="rule"></div>
+          <ul class="syllabus">
+            <li>
+              <span class="kind">Read</span>
+              <span>How tokenization works</span>
+              <span class="kind">02</span>
+            </li>
+            <li>
+              <span class="kind">Lab</span>
+              <span>Word / subword / character / byte</span>
+              <span class="kind">03–10</span>
+            </li>
+            <li>
+              <span class="kind">Read</span>
+              <a href="#unicode">Unicode &amp; UTF-8<span class="go" aria-hidden="true">→</span></a>
+              <span class="kind">03</span>
+            </li>
+            <li>
+              <span class="kind">Lab</span>
+              <a href="#lab">Four-way lab<span class="go" aria-hidden="true">→</span></a>
+              <span class="kind">04</span>
+            </li>
+            <li>
+              <span class="kind">Read</span>
+              <a href="#word">Word level<span class="go" aria-hidden="true">→</span></a>
+              <span class="kind">05</span>
+            </li>
+            <li>
+              <span class="kind">Read</span>
+              <a href="#subword">Subword level<span class="go" aria-hidden="true">→</span></a>
+              <span class="kind">06</span>
+            </li>
+            <li>
+              <span class="kind">Read</span>
+              <a href="#bpe-how">How BPE works<span class="go" aria-hidden="true">→</span></a>
+              <span class="kind">07</span>
+            </li>
+            <li>
+              <span class="kind">Lab</span>
+              <a href="#algo-labs">Algorithm labs<span class="go" aria-hidden="true">→</span></a>
+              <span class="kind">08</span>
+            </li>
+            <li>
+              <span class="kind">Read</span>
+              <a href="#character">Character level<span class="go" aria-hidden="true">→</span></a>
+              <span class="kind">09</span>
+            </li>
+            <li>
+              <span class="kind">Read</span>
+              <a href="#byte">Byte level<span class="go" aria-hidden="true">→</span></a>
+              <span class="kind">10</span>
+            </li>
+            <li>
+              <span class="kind">Read</span>
+              <a href="#length">Vocab &amp; context<span class="go" aria-hidden="true">→</span></a>
+              <span class="kind">11</span>
+            </li>
+            <li>
+              <span class="kind">Read</span>
+              <a href="#visuals">Visuals<span class="go" aria-hidden="true">→</span></a>
+              <span class="kind">12</span>
+            </li>
+            <li>
+              <span class="kind">Read</span>
+              <a href="#glossary">Glossary<span class="go" aria-hidden="true">→</span></a>
+              <span class="kind">13</span>
+            </li>
+            <li>
+              <span class="kind">Code</span>
+              <a href="#notebooks">Notebooks<span class="go" aria-hidden="true">→</span></a>
+              <span class="kind">14</span>
+            </li>
+          </ul>
+          <div class="hero-intro">
+            <p class="lede">
+              Think of tokenization as a <strong>translator</strong>. You write normal text, such
+              as <code>Hello world</code>, and the tokenizer turns it into numbers like
+              <code>[101, 7592, 2088, 102]</code>. The model only ever sees those numbers.
+            </p>
+            <p>
+              Those numbers come from a fixed <strong>vocabulary</strong> — simply a list of all
+              the pieces the tokenizer knows. Here, <code>101</code> and <code>102</code> mark the
+              start and end of the sentence, while <code>7592</code> and <code>2088</code> stand
+              for the pieces in between. When the model finishes, the tokenizer runs in reverse and
+              turns the numbers back into readable text.
+            </p>
+            <p>
+              Tokenizers such as <strong>BPE</strong>, <strong>WordPiece</strong>, and
+              <strong>SentencePiece</strong> are the recipes for choosing those pieces — and for
+              reversing the process afterwards.
+            </p>
+          </div>
+
+          <div class="plain">
+            <strong>Never seen this before? Start here.</strong>
+            <p>
+              A language model cannot read. It can only do arithmetic. So every piece of text has
+              to be turned into numbers before the model sees it, and turned back into text
+              afterwards. <em>Tokenization is that conversion.</em>
+            </p>
+            <p>
+              The only real question in this whole topic is: <strong>how big is one piece?</strong>
+              A whole word? Half a word? One letter? One byte? Every answer trades something away,
+              and this page lets you feel each trade in a live playground instead of taking it on
+              trust.
+            </p>
+            <p class="plain-path">
+              Suggested path if you are new:
+              <a href="#taxonomy">02 how it works</a> →
+              <a href="#unicode">03 Unicode &amp; UTF-8</a> →
+              <a href="#lab">04 play with the splitter</a> →
+              <a href="#bpe-how">07 how BPE works</a> →
+              <a href="#algo-labs">08 train one yourself</a>.
+              Sections 09–11 explain why real models chose bytes.
+            </p>
+          </div>
+        </header>
+
+        <section id="taxonomy">
+          <h2>How tokenization works</h2>
+          <h3>From Text to Numbers</h3>
+          <p>
+            A neural network works with numbers, not with words or sentences. So before a
+            transformer can process text and predict what comes next, the text must first be
+            converted into a sequence of <strong>token IDs</strong>.
+          </p>
+          <p>
+            For example, a BERT-style tokenizer might turn <code>Hello world</code> into
+            <code>[101, 7592, 2088, 102]</code>. Here, <code>101</code> and <code>102</code> are
+            special tokens that mark the beginning and end of the sequence, while
+            <code>7592</code> and <code>2088</code> represent the pieces of text in between.
+          </p>
+          <p>
+            The transformer does not receive the original words. It receives these IDs, which are
+            then turned into numerical vectors called <strong>embeddings</strong>. After the model
+            produces its output, the tokenizer is used again to turn token IDs back into readable
+            text.
+          </p>
+          <figure class="flow-figure">
+            <figcaption>At a high level — the full round trip</figcaption>
+            <ol class="flow">
+              <li class="flow-step is-human">
+                <span class="flow-name">Text</span>
+                <span class="flow-eg">Hello world</span>
+              </li>
+              <li class="flow-step is-tok">
+                <span class="flow-name">Tokenizer</span>
+                <span class="flow-eg">encode</span>
+              </li>
+              <li class="flow-step">
+                <span class="flow-name">Tokens</span>
+                <span class="flow-eg">hello · world</span>
+              </li>
+              <li class="flow-step">
+                <span class="flow-name">Token IDs</span>
+                <span class="flow-eg">7592 · 2088</span>
+              </li>
+              <li class="flow-step">
+                <span class="flow-name">Embeddings</span>
+                <span class="flow-eg">vectors</span>
+              </li>
+              <li class="flow-step is-model">
+                <span class="flow-name">Transformer</span>
+                <span class="flow-eg">the model</span>
+              </li>
+              <li class="flow-step">
+                <span class="flow-name">Output IDs</span>
+                <span class="flow-eg">predicted</span>
+              </li>
+              <li class="flow-step is-tok">
+                <span class="flow-name">Tokenizer</span>
+                <span class="flow-eg">decode</span>
+              </li>
+              <li class="flow-step is-human">
+                <span class="flow-name">Text</span>
+                <span class="flow-eg">readable again</span>
+              </li>
+            </ol>
+            <p class="flow-legend">
+              <span><span class="key key-human"></span> what a human reads</span>
+              <span><span class="key key-tok"></span> the tokenizer, used twice</span>
+              <span><span class="key key-num"></span> numbers only</span>
+              <span><span class="key key-model"></span> the model</span>
+            </p>
+          </figure>
+          <div class="callout">
+            <strong>The one takeaway.</strong> The tokenizer is the bridge between
+            <strong>human-readable text</strong> and the
+            <strong>numbers a neural network can process</strong>. It is the only part of the stack
+            that speaks both languages, which is why it appears at both ends of the diagram.
+          </div>
+          <p>
+            Example: if two tokenizers both see <code>Hello world</code>, they may agree on the
+            idea of “hello” and “world” but still assign different IDs. The number is just a label
+            inside that tokenizer’s own vocabulary.
+          </p>
+
+          <h3>The Tokenization Pipeline</h3>
+          <p>
+            Tokenization is not just "splitting a sentence into words." A tokenizer usually
+            performs several steps, and each step has a specific job.
+          </p>
+          <p>
+            Think of the process as a pipeline. Each stage prepares the text for the next one. If
+            a stage is skipped or done badly, you can get wrong lengths, unknown tokens, or broken
+            multilingual text.
+          </p>
+          <p>
+            Example: <code>"Hello, I'm learning AI!"</code> may first stay as raw text, then be
+            normalized, then split into pieces like <code>Hello</code>, <code>,</code>,
+            <code>I</code>, <code>'</code>, <code>m</code>, <code>learning</code>, <code>AI</code>,
+            <code>!</code> before those pieces are mapped to IDs.
+          </p>
+          <p>
+            Here is the full path from text to model input and back again:
+          </p>
+
+          <div class="pipeline" role="list">
+            <div class="stage" role="listitem">
+              <strong>01 Raw text</strong>
+              Unicode string
+            </div>
+            <div class="stage" role="listitem">
+              <strong>02 Normalize</strong>
+              lowercasing, Unicode NFKC
+            </div>
+            <div class="stage" role="listitem">
+              <strong>03 Pre-tokenize</strong>
+              split on spaces / punctuation
+            </div>
+            <div class="stage" role="listitem">
+              <strong>04 Model</strong>
+              word, subword, char, or byte
+            </div>
+            <div class="stage" role="listitem">
+              <strong>05 IDs</strong>
+              integers the net sees
+            </div>
+            <div class="stage" role="listitem">
+              <strong>06 Decode</strong>
+              IDs back to text
+            </div>
+          </div>
+          <p class="diagram-link">
+            Schematic:
+            <a href="diagrams/01-pipeline.html">Tokenizer pipeline</a>
+            ·
+            <a href="diagrams/02-granularity.html">Granularity layers</a>
+          </p>
+
+          <p>
+            The <em>granularity</em> of step 4 is the main design choice. Each level answers one
+            question: <strong>what is one token?</strong>
+          </p>
+          <p>
+            Example: the word <code>lowest</code> can be a single word token, two subword pieces
+            like <code>low</code> + <code>est</code>, six characters, or six bytes before any
+            merges happen. The answer depends on the tokenizer you choose.
+          </p>
+
+          <div class="taxonomy">
+            <article class="tax-card">
+              <div class="level">Word</div>
+              <p>
+                One token ≈ one whitespace word. Tiny sequences, huge vocabulary, and any new word
+                becomes unknown. Fine for small closed domains. Fragile for open web text.
+              </p>
+              <p>
+                Example: <code>I love football</code> becomes three tokens, but
+                <code>ChatGPT</code> may become <code>[UNK]</code> if the word was never trained.
+              </p>
+            </article>
+            <article class="tax-card">
+              <div class="level">Subword</div>
+              <p>
+                One token is a frequent chunk: <code>token</code> + <code>##ization</code>, or
+                <code>low</code> + <code>er</code>. This is how BERT, GPT, T5, and Llama actually
+                work. Three training recipes live in the algorithm labs below.
+              </p>
+              <p>
+                Example: <code>playing</code> might become <code>play</code> + <code>ing</code>, so
+                the model can reuse pieces it already knows instead of learning every word from
+                scratch.
+              </p>
+            </article>
+            <article class="tax-card">
+              <div class="level">Character</div>
+              <p>
+                One token is a Unicode code point (sometimes a grapheme cluster). Vocabulary stays
+                small. Sequences get long. Spelling and morphology become the model’s problem.
+              </p>
+              <p>
+                Example: <code>hello</code> becomes <code>h</code>, <code>e</code>, <code>l</code>,
+                <code>l</code>, <code>o</code>. A short word looks harmless, but a whole sentence
+                gets much longer very quickly.
+              </p>
+            </article>
+            <article class="tax-card">
+              <div class="level">Byte</div>
+              <p>
+                One token is a UTF-8 byte (0–255). Nothing is unknown — every Unicode string is
+                some byte sequence. GPT-2-style BPE starts here, then merges bytes into longer
+                pieces.
+              </p>
+              <p>
+                Example: <code>A</code> is 1 byte, <code>é</code> is 2 bytes, and <code>👋</code> is
+                4 bytes before merges. The model always has a way to spell the text.
+              </p>
+            </article>
+          </div>
+
+          <div class="callout">
+            <strong>Rule of thumb.</strong> Coarser tokens → shorter sequences, bigger vocab,
+            more out-of-vocabulary pain. Finer tokens → longer sequences, smaller vocab, more
+            compute per sentence. Subword is the industry compromise.
+          </div>
+          <p>
+            Example: a word tokenizer may use one token for <code>house</code>, a subword tokenizer
+            may use <code>house</code> or <code>hous</code> + <code>e</code>, a character tokenizer
+            uses five tokens, and a byte tokenizer starts with the UTF-8 bytes underneath it.
+          </p>
+
+          <h3>What a vocabulary actually is</h3>
+          <p>
+            A vocabulary is a two-way map: piece ↔ integer. Special pieces almost always sit at
+            the front: padding, unknown, start, end, mask. Training a tokenizer means
+            <em>choosing the piece list</em> so that a large corpus compresses well. Using a
+            tokenizer means <em>looking pieces up</em> — you do not invent new IDs at inference
+            time.
+          </p>
+
+          <dl class="dl">
+            <div>
+              <dt>Token</dt>
+              <dd>One atomic piece after splitting. Might be a word, a subword, a character, or a byte.</dd>
+            </div>
+            <div>
+              <dt>Type / ID</dt>
+              <dd>The integer that names that piece inside the vocabulary. The model embeds this ID.</dd>
+            </div>
+            <div>
+              <dt>OOV / UNK</dt>
+              <dd>Out of vocabulary: a piece the vocab never listed. Word-level tokenizers hit this constantly.</dd>
+            </div>
+            <div>
+              <dt>Detokenize</dt>
+              <dd>Glue pieces back into a string. Spaces, <code>##</code>, and the SentencePiece <code>▁</code> all exist to make this reversible.</dd>
+            </div>
+          </dl>
+
+          <p class="exit-ticket">
+            <strong>Leave when:</strong> you can name the six pipeline stages and say which one
+            chooses word vs subword vs byte.
+          </p>
+        </section>
+
+        <section id="unicode" class="wide">
+          <h2>Unicode and UTF-8</h2>
+          <p class="lede">
+            Before a tokenizer ever runs, your text is <em>already</em> numbers. Two different
+            standards did that job, and beginners almost always blur them together. Separating
+            them makes everything after this page easier.
+          </p>
+
+          <h3>Unicode: the catalogue of characters</h3>
+          <p>
+            <strong>Unicode</strong> is a universal standard that assigns a unique
+            <strong>code point</strong> — a number — to every character. It is a giant numbered
+            catalogue that everyone in the world agrees on:
+          </p>
+          <ul>
+            <li><code>A</code> → <code>U+0041</code> (decimal 65)</li>
+            <li><code>é</code> → <code>U+00E9</code> (decimal 233)</li>
+            <li><code>আ</code> → <code>U+0986</code> (decimal 2438)</li>
+            <li><code>😊</code> → <code>U+1F60A</code> (decimal 128522)</li>
+          </ul>
+          <p>
+            The <code>U+</code> prefix just means “this is a Unicode code point, written in hex.”
+            Because every language, symbol, and emoji has its own agreed number, a document written
+            in Tokyo opens correctly in Zürich. That is the whole point of Unicode: <em>consistent
+            identity</em> for characters.
+          </p>
+          <p>
+            Example: the letter <code>A</code> is always <code>U+0041</code>, whether it appears in
+            a sentence, a filename, or a code comment. Unicode gives the character its identity
+            before any tokenizer decides what to do with it.
+          </p>
+          <p>
+            Crucially, Unicode says <strong>nothing</strong> about how those numbers are stored in
+            a file or sent over a network. It only hands out the numbers.
+          </p>
+
+          <h3>UTF-8: the rule for storing those numbers as bytes</h3>
+          <p>
+            <strong>UTF-8</strong> is an <em>encoding</em>: it converts Unicode code points into
+            bytes so text can be stored on disk or transmitted. It uses a variable number of bytes
+            per character:
+          </p>
+          <ul>
+            <li>ASCII characters (<code>U+0000</code>–<code>U+007F</code>) use <strong>1 byte</strong></li>
+            <li>Everything else uses <strong>2, 3, or 4 bytes</strong></li>
+          </ul>
+          <div class="callout">
+            <strong>The relationship in one line.</strong>
+            Unicode defines <em>which characters exist and what number each one has</em> → UTF-8
+            defines <em>how that number is written down as bytes</em>. Unicode is the catalogue;
+            UTF-8 is the packing rule.
+          </div>
+          <p>
+            Example: <code>A</code> is one byte in UTF-8, but <code>😊</code> is four bytes. That is
+            why byte-level tokenizers see more pieces for emoji and many non-Latin scripts until
+            later merges compress them again.
+          </p>
+
+          <h3>The same four characters, all the way down</h3>
+          <p>
+            Read this table left to right and you have followed one character from human symbol,
+            to Unicode number, to the actual bytes on disk:
+          </p>
+          <div style="overflow-x: auto">
+            <table class="bytes-table">
+              <thead>
+                <tr>
+                  <th>Character</th>
+                  <th>Unicode name</th>
+                  <th>Code point</th>
+                  <th>UTF-8 bytes (hex)</th>
+                  <th>Bytes</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>A</td>
+                  <td>LATIN CAPITAL LETTER A</td>
+                  <td>U+0041</td>
+                  <td>41</td>
+                  <td>1</td>
+                </tr>
+                <tr>
+                  <td>é</td>
+                  <td>LATIN SMALL LETTER E WITH ACUTE</td>
+                  <td>U+00E9</td>
+                  <td>C3 A9</td>
+                  <td>2</td>
+                </tr>
+                <tr>
+                  <td>আ</td>
+                  <td>BENGALI LETTER A</td>
+                  <td>U+0986</td>
+                  <td>E0 A6 86</td>
+                  <td>3</td>
+                </tr>
+                <tr>
+                  <td>日</td>
+                  <td>CJK UNIFIED IDEOGRAPH-65E5</td>
+                  <td>U+65E5</td>
+                  <td>E6 97 A5</td>
+                  <td>3</td>
+                </tr>
+                <tr>
+                  <td>😊</td>
+                  <td>SMILING FACE WITH SMILING EYES</td>
+                  <td>U+1F60A</td>
+                  <td>F0 9F 98 8A</td>
+                  <td>4</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            Notice that <code>A</code> costs one byte and <code>😊</code> costs four. That single
+            fact explains the byte column in the
+            <a href="#lab">four-way lab</a> below, and it is why the same sentence can be cheap in
+            English and expensive in Bengali or Japanese.
+          </p>
+          <p>
+            Example: <code>café</code> looks short on screen, but the accent means the code-point
+            and byte counts are different from plain <code>cafe</code>. That is why the inspector
+            below separates graphemes, code points, and bytes.
+          </p>
+          <p>
+            Build your own rows in the
+            <a href="#byte">UTF-8 inspector</a> — type anything and watch graphemes, code points,
+            and bytes diverge.
+          </p>
+
+          <h3>Three different ways to count “length”</h3>
+          <p>
+            Beginners lose hours to this. The string <code>café 👋</code> has three defensible
+            lengths, and each one is correct for a different question:
+          </p>
+          <p>
+            Example: a browser may show <code>👋</code> as one visible character, but a string API
+            can count code points differently, and the byte-level tokenizer always counts the UTF-8
+            bytes underneath it.
+          </p>
+          <dl class="dl">
+            <div>
+              <dt>Grapheme</dt>
+              <dd>
+                What a human calls “one character” on screen. <code>é</code> is one grapheme even
+                when it is built from <code>e</code> + a combining accent.
+              </dd>
+            </div>
+            <div>
+              <dt>Code point</dt>
+              <dd>
+                One entry in the Unicode catalogue. <code>é</code> can be
+                <em>one</em> code point (<code>U+00E9</code>) or <em>two</em>
+                (<code>U+0065</code> + <code>U+0301</code>) — which is exactly what
+                normalization (NFKC in the pipeline) is for.
+              </dd>
+            </div>
+            <div>
+              <dt>Byte</dt>
+              <dd>
+                One UTF-8 byte, 0–255. This is what is actually stored, and what byte-level
+                tokenizers consume.
+              </dd>
+            </div>
+          </dl>
+
+          <h3>How big is Unicode, really?</h3>
+          <div class="stat-row">
+            <div class="stat">
+              <strong>1,114,112</strong>
+              <span>code points in the Unicode codespace (U+0000–U+10FFFF)</span>
+            </div>
+            <div class="stat">
+              <strong>159,801</strong>
+              <span>characters actually assigned as of Unicode 17.0 (Sept 2025)</span>
+            </div>
+            <div class="stat">
+              <strong>172</strong>
+              <span>scripts (writing systems) supported — serving hundreds of languages</span>
+            </div>
+            <div class="stat">
+              <strong>256</strong>
+              <span>possible values of one UTF-8 byte — and that never grows</span>
+            </div>
+          </div>
+          <p class="font-note">
+            Note the wording: 172 <em>scripts</em>, not 172 languages. One script such as Latin or
+            Devanagari is shared by many languages. Also note that the assigned-character count
+            grows with every Unicode release — the 256 byte values never do. Hold on to that
+            contrast; <a href="#byte">section 10</a> turns it into a design decision.
+          </p>
+
+          <div class="callout">
+            <strong>Why UTF-8 won.</strong> It is backward compatible with ASCII (English text is
+            byte-for-byte identical to a 1960s ASCII file), it has no byte-order ambiguity, it can
+            encode every Unicode character, and it is self-synchronizing — you can jump into the
+            middle of a stream and find the next character boundary. Python and JavaScript hold
+            strings differently in memory (Python uses code points, JavaScript uses UTF-16 units),
+            but files, HTTP, and model tokenizers overwhelmingly speak UTF-8.
+          </div>
+
+          <p class="exit-ticket">
+            <strong>Leave when:</strong> you can say in one sentence what Unicode gives you, what
+            UTF-8 gives you, and why <code>😊</code> is four bytes but <code>A</code> is one.
+          </p>
+        </section>
+
+        <section id="lab" class="wide">
+          <h2>Four-way lab</h2>
+          <p>
+            Type anything. The same string is split four ways at once. Watch how token
+            <em>count</em> explodes as units get smaller, and how punctuation, emoji, and non-English
+            scripts behave.
+          </p>
+          <p>
+            Example: try <code>café 👋</code> or <code>বাংলা 日本語</code>. The word view stays short,
+            the character view grows, and the byte view grows fastest before merges have a chance to
+            compress repeated patterns.
+          </p>
+
+          <div class="lab">
+            <div class="lab-head">
+              <h3>Live splitter</h3>
+              <div class="metrics" id="four-stats"></div>
+            </div>
+            <label for="four-text">Input text</label>
+            <textarea id="four-text" rows="3">Tokenization is the first step of every language model 👋</textarea>
+            <div class="row" role="group" aria-label="Example strings">
+              <button type="button" class="preset" data-four-preset="the cat sat on the mat">English words</button>
+              <button type="button" class="preset" data-four-preset="unhappiness">One long word</button>
+              <button type="button" class="preset" data-four-preset="café 👋">Accent + emoji</button>
+              <button type="button" class="preset" data-four-preset="বাংলা 日本語">Indic + Japanese</button>
+              <button type="button" class="preset" data-four-preset="don't 3.14 C++">Punctuation</button>
+            </div>
+            <div class="grid-4">
+              <div class="pane">
+                <div class="pane-head">
+                  <h4>Word</h4>
+                  <span class="count" id="count-word">0</span>
+                </div>
+                <div class="chips" id="chips-word"></div>
+              </div>
+              <div class="pane">
+                <div class="pane-head">
+                  <h4>Naive subword</h4>
+                  <span class="count" id="count-sub">0</span>
+                </div>
+                <div class="chips" id="chips-sub"></div>
+              </div>
+              <div class="pane">
+                <div class="pane-head">
+                  <h4>Character</h4>
+                  <span class="count" id="count-char">0</span>
+                </div>
+                <div class="chips" id="chips-char"></div>
+              </div>
+              <div class="pane">
+                <div class="pane-head">
+                  <h4>UTF-8 byte</h4>
+                  <span class="count" id="count-byte">0</span>
+                </div>
+                <div class="chips" id="chips-byte"></div>
+              </div>
+            </div>
+            <p style="margin: 0.85rem 0 0; font-size: 0.88rem; color: var(--muted)">
+              “Naive subword” here is a teaching trick: 3-character chunks with WordPiece-style
+              <code>##</code>. Real BPE / WordPiece / SentencePiece learn those chunks from data —
+              open Algorithm labs.
+            </p>
+            <form class="quiz" data-quiz data-correct="no" data-ok="Correct — naive chunks are fixed width, not trained merges." data-bad="Naive 3-char chunks are not BPE. Real subword pieces are learned from corpus counts.">
+              <p class="quiz-q">Quick check: is the “Naive subword” pane real BPE?</p>
+              <label class="quiz-opt"><input type="radio" name="q" value="yes" /> Yes — same as GPT</label>
+              <label class="quiz-opt"><input type="radio" name="q" value="no" /> No — fixed 3-char teaching chunks</label>
+              <button type="submit">Check</button>
+              <p class="quiz-feedback" aria-live="polite"></p>
+            </form>
+          </div>
+
+          <p class="exit-ticket">
+            <strong>Leave when:</strong> you can explain why the byte column is longer than the
+            character column for <code>👋</code>.
+          </p>
+        </section>
+
+        <section id="word" class="wide">
+          <h2>Word level</h2>
+          <p>
+            The oldest idea: split on whitespace (and usually punctuation). Each distinct word
+            string gets its own ID. “cat” and “cats” are unrelated. “Tokenization” is a brand-new
+            type even if the model already knows “token”.
+          </p>
+          <p>
+            Example: <code>I love football</code> becomes three IDs in a word tokenizer, but
+            <code>I love ChatGPT</code> can fall apart if <code>ChatGPT</code> was never seen in
+            training. That is the OOV problem in one sentence.
+          </p>
+          <p>
+            That is the <strong>out-of-vocabulary (OOV)</strong> problem. At training time you only
+            store the words that appeared often enough. At test time a name, a typo, or a new
+            product word becomes <code>[UNK]</code>. The model then sees a hole, not the spelling.
+          </p>
+
+          <div class="lab">
+            <div class="lab-head">
+              <h3>The OOV trap</h3>
+              <span class="lab-tag">Lookup</span>
+            </div>
+            <label for="oov-vocab">Training sentence — this is the entire word vocabulary</label>
+            <textarea id="oov-vocab" rows="2">the cat sat on the mat</textarea>
+            <label for="oov-probe">Probe sentence</label>
+            <input id="oov-probe" type="text" value="the dog sat on the mat" />
+            <p id="oov-predict" class="predict-prompt" hidden></p>
+            <button type="button" id="oov-reveal">Reveal [UNK]s</button>
+            <div class="pane pane-fixed" style="margin-top: 0.8rem">
+              <div class="pane-head">
+                <h4>Word IDs after lookup</h4>
+              </div>
+              <div class="chips is-hidden" id="oov-chips"></div>
+            </div>
+            <p id="oov-note" class="algo-rule"></p>
+          </div>
+
+          <p>
+            Try replacing <em>dog</em> with <em>cats</em>, a name, or a Bengali word. Word-level
+            tokenization has no way to reuse letters it already knows. That single failure is why
+            modern LLMs are not word tokenizers.
+          </p>
+          <p class="exit-ticket">
+            <strong>Leave when:</strong> you can say why <code>cat</code> and <code>cats</code> are
+            unrelated IDs under word-level tokenization.
+          </p>
+        </section>
+
+        <section id="subword">
+          <h2>Subword level</h2>
+          <p>
+            Subword tokenization keeps frequent words intact and splits rare words into reusable
+            pieces. <code>unhappiness</code> might become <code>un</code> + <code>happiness</code>,
+            or <code>un</code> + <code>happy</code> + <code>ness</code>, depending on the algorithm
+            and the corpus.
+          </p>
+          <p>
+            Example: <code>playing</code> can stay whole if it is common, but a rarer word like
+            <code>unhappiness</code> is more useful when split into pieces that other words can
+            reuse. That is why subword tokenization feels like a compromise: it keeps common words
+            short and rare words possible.
+          </p>
+          <p>Same corpus, three scoring rules. Play all three in the lab, then train the real libraries in Jupyter.</p>
+          <dl class="dl">
+            <div>
+              <dt>BPE</dt>
+              <dd>Merge the most <em>frequent</em> adjacent pair, again and again. GPT family, many Llama tokenizers.</dd>
+            </div>
+            <div>
+              <dt>WordPiece</dt>
+              <dd>Merge the pair that most improves a likelihood score, not raw count. BERT, DistilBERT. Continuation mark <code>##</code>.</dd>
+            </div>
+            <div>
+              <dt>SentencePiece</dt>
+              <dd>Treat the raw string as the unit (spaces become the character <code>▁</code>). Unigram LM or BPE. T5, ALBERT, many multilingual models.</dd>
+            </div>
+          </dl>
+          <div class="callout">
+            <strong>Misconception to kill.</strong> BPE pieces are not guaranteed morphemes.
+            <code>est</code> appears because the pair was frequent, not because English has a
+            comparative suffix. Probe <code>star</code> vs <code>widest</code> with and without
+            <code>&lt;/w&gt;</code> in mind.
+          </div>
+          <p>
+            Example: a tokenizer might learn <code>low</code> + <code>est</code> from the corpus,
+            then reuse those same pieces in <code>lowest</code> and <code>widest</code> even though
+            the words are not built the same way in grammar textbooks. The pieces are learned from
+            frequency, not from a dictionary of linguistics rules.
+          </p>
+          <p class="exit-ticket">
+            <strong>Leave when:</strong> you can name the scoring rule for each of the three
+            algorithms in one sentence.
+          </p>
+          <p class="diagram-link">
+            Schematic:
+            <a href="diagrams/03-bpe-train.html">BPE train loop</a>
+            ·
+            <a href="diagrams/04-bpe-vs-wordpiece.html">BPE vs WordPiece score</a>
+            ·
+            <a href="diagrams/05-detokenize-marks.html">Detokenize marks</a>
+          </p>
+        </section>
+
+        <section id="model-tokenizers" class="wide">
+          <h2>Which models use which tokenizer?</h2>
+          <p>
+            Before learning BPE, it helps to see where the main tokenizer methods are used.
+            <strong>Vocabulary size</strong> means the number of token IDs the tokenizer can
+            produce. It does not mean the number of words or ideas the model understands.
+          </p>
+          <div style="overflow-x: auto">
+            <table class="bytes-table">
+              <thead>
+                <tr>
+                  <th>Model version</th>
+                  <th>Tokenizer method</th>
+                  <th>Starts with</th>
+                  <th>Vocabulary size</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>GPT-2</td>
+                  <td>Byte-level BPE</td>
+                  <td>UTF-8 bytes</td>
+                  <td>50,257</td>
+                </tr>
+                <tr>
+                  <td>RoBERTa</td>
+                  <td>Byte-level BPE</td>
+                  <td>UTF-8 bytes</td>
+                  <td>50,265</td>
+                </tr>
+                <tr>
+                  <td>BERT base, uncased</td>
+                  <td>WordPiece</td>
+                  <td>Characters</td>
+                  <td>30,522</td>
+                </tr>
+                <tr>
+                  <td>ALBERT base v2</td>
+                  <td>SentencePiece Unigram</td>
+                  <td>Characters</td>
+                  <td>30,000</td>
+                </tr>
+                <tr>
+                  <td>Llama 2</td>
+                  <td>SentencePiece BPE</td>
+                  <td>Characters and bytes</td>
+                  <td>32,000</td>
+                </tr>
+                <tr>
+                  <td>Llama 3</td>
+                  <td>Tiktoken-based BPE</td>
+                  <td>UTF-8 bytes</td>
+                  <td>128,256</td>
+                </tr>
+                <tr>
+                  <td>DeepSeek-V3</td>
+                  <td>Byte-level BPE</td>
+                  <td>UTF-8 bytes</td>
+                  <td>129,280</td>
+                </tr>
+                <tr>
+                  <td>Qwen2.5</td>
+                  <td>Byte-level BPE</td>
+                  <td>UTF-8 bytes</td>
+                  <td>152,064</td>
+                </tr>
+                <tr>
+                  <td>Kimi K2</td>
+                  <td>Byte-level BPE</td>
+                  <td>UTF-8 bytes</td>
+                  <td>163,840</td>
+                </tr>
+                <tr>
+                  <td>Llama 3.3 70B on Groq</td>
+                  <td>Tiktoken-based BPE</td>
+                  <td>UTF-8 bytes</td>
+                  <td>128,256</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="callout">
+            <strong>Always check the exact model version.</strong> Models in the same family can
+            use different tokenizers. Vocabulary counts can also include special tokens such as
+            <code>[CLS]</code>, <code>[SEP]</code>, or chat-control tokens, so sources sometimes
+            report slightly different totals.
+          </div>
+          <p>
+            <strong>Why is Groq listed differently?</strong> Groq runs models from companies such
+            as Meta, Google, and OpenAI on its inference platform. It does not give every hosted
+            model one “Groq tokenizer.” A Llama model served by Groq still uses its Llama
+            tokenizer, while a different hosted model uses its own tokenizer.
+          </p>
+
+          <h3>How to train your own tokenizer</h3>
+          <p>
+            You can train a tokenizer without training a language model. The tokenizer learns
+            useful pieces from a collection of text called a <strong>training corpus</strong>.
+          </p>
+          <ol class="steps">
+            <li>
+              <strong>Collect representative text.</strong> Include the languages, code, names,
+              numbers, and writing styles that your model will receive.
+            </li>
+            <li>
+              <strong>Choose a method.</strong> Use BPE, WordPiece, or SentencePiece Unigram,
+              depending on the behaviour you want.
+            </li>
+            <li>
+              <strong>Choose a vocabulary size and special tokens.</strong> For example, request
+              32,000 token IDs and reserve tokens such as <code>[UNK]</code>, <code>[BOS]</code>,
+              and <code>[EOS]</code> if your model needs them.
+            </li>
+            <li>
+              <strong>Run the tokenizer trainer.</strong> It reads the corpus, counts patterns,
+              and builds the vocabulary and rules. No neural-network training is involved yet.
+            </li>
+            <li>
+              <strong>Test, save, and freeze it.</strong> Check common text, rare words, every
+              target language, emoji, and code. Once model training begins, keep the token IDs
+              fixed so their learned embeddings do not change meaning.
+            </li>
+          </ol>
+          <div class="callout">
+            <strong>Try it in this project.</strong> The <a href="#notebooks">three Jupyter
+            notebooks</a> train BPE, WordPiece, and SentencePiece tokenizers on a small corpus, so
+            you can inspect the learned vocabulary before using a large dataset.
+          </div>
+        </section>
+
+        <section id="bpe-how" class="wide">
+          <h2>How BPE works, step by step</h2>
+          <p class="lede">
+            Byte Pair Encoding is the algorithm behind the GPT family and most Llama tokenizers.
+            It is also genuinely simple — simple enough to do by hand, which is what this section
+            does before you drive it in the lab.
+          </p>
+
+          <h3>The algorithm</h3>
+          <p>
+            BPE is a <strong>greedy</strong> algorithm that builds a vocabulary by repeatedly
+            merging the most frequent pair of adjacent tokens. “Greedy” means it takes the best
+            pair available <em>right now</em>, with no lookahead and no going back to reconsider an
+            earlier merge.
+          </p>
+          <ol class="steps">
+            <li>
+              <strong>Prepare the corpus.</strong> Split the text into words and count how often
+              each distinct word occurs. Mark word boundaries — this lab uses an end-of-word
+              symbol <code>&lt;/w&gt;</code> — so merges can never run across two words.
+            </li>
+            <li>
+              <strong>Start with individual characters as tokens.</strong> Every word is spelled
+              out as a sequence of single characters. Those characters are the starting
+              vocabulary. (Byte-level BPE starts from the 256 <em>bytes</em> instead — same
+              algorithm, different atoms.)
+            </li>
+            <li>
+              <strong>Count adjacent pairs.</strong> Across the whole corpus, count how often each
+              pair of neighbouring tokens occurs, weighted by how often its word occurs.
+            </li>
+            <li>
+              <strong>Merge the most frequent pair</strong> into one new token, everywhere it
+              appears.
+            </li>
+            <li>
+              <strong>Record the merge and add the new token to the vocabulary.</strong> The merge
+              list is ordered — that order matters later.
+            </li>
+            <li>
+              <strong>Repeat steps 3–5 until the vocabulary reaches its target size</strong> (or,
+              equivalently, until you have performed a chosen number of merges). This is the stop
+              condition.
+            </li>
+          </ol>
+
+          <div class="fix-note">
+            <strong>Why BPE must stop merging</strong>
+            <p>
+              First, a <strong>merge</strong> means joining two neighbouring tokens and treating
+              them as one new token. Suppose BPE starts with the word <code>low</code> split into
+              three character tokens:
+            </p>
+            <pre class="merge-log">start          l + o + w       3 tokens
+merge l + o    lo + w          2 tokens
+merge lo + w   low             1 token</pre>
+            <p>
+              This is what “the word shrinks” means: the text does not lose letters, but the number
+              of tokens becomes smaller. If BPE continued merging every possible pair, each word
+              in the training corpus would eventually become one large token. For example,
+              <code>lowest</code> would no longer be reusable pieces such as <code>low</code> +
+              <code>est</code>; it would become the single token <code>lowest</code>. The vocabulary
+              would then behave too much like a word-level vocabulary, with a separate large token
+              for each training word.
+            </p>
+            <p>
+              Real BPE therefore stops at a <strong>limit chosen before training</strong>. That
+              limit may be a target vocabulary size or a fixed number of merges. Think of it as a
+              spending budget: BPE is allowed to create only a certain number of new tokens. GPT-2,
+              for example, was given 50,000 merges. This keeps useful common pieces while avoiding
+              a separate token for every complete word.
+            </p>
+            <p>
+              A second stopping rule can ignore very rare pairs. If a pair appears only once,
+              creating a permanent vocabulary entry for it usually saves very little. This lab
+              merges pairs with frequency 2 or more and stops when the best remaining pair has
+              frequency below 2.
+            </p>
+            <p>
+              <strong>What happens after BPE stops?</strong> Training is finished. BPE saves the
+              new vocabulary pieces and the merge rules in the exact order they were learned.
+              These are then frozen: when the tokenizer receives new text, it does not count pairs
+              or learn new merges. It simply starts from the smallest units and replays the saved
+              rules that apply.
+            </p>
+            <p>
+              For example, imagine training stops after learning these four rules:
+            </p>
+            <pre class="merge-log">01  l  + o   → lo
+02  lo + w   → low
+03  e  + s   → es
+04  es + t   → est</pre>
+            <p>
+              The saved vocabulary now includes pieces such as <code>lo</code>, <code>low</code>,
+              <code>es</code>, and <code>est</code>. When BPE later sees <code>lowest</code>, it
+              replays those rules and produces <code>low</code> + <code>est</code>. If it sees
+              <code>lower</code>, it can produce <code>low</code> + <code>e</code> + <code>r</code>
+              because no saved rule joins the final <code>e</code> and <code>r</code>. Each resulting
+              piece is then looked up in the vocabulary and replaced with its token ID for the
+              model.
+            </p>
+            <div class="callout">
+              <strong>Training chooses the pieces; encoding uses them.</strong> After the stopping
+              point, the tokenizer no longer learns. It applies the frozen merge list to every new
+              input and falls back to smaller known units whenever no larger saved merge applies.
+              <p>
+                For example, with the four saved rules above:
+              </p>
+              <pre class="merge-log">lowest  → low + est
+lower   → low + e + r
+lovely  → lo + v + e + l + y</pre>
+              <p>
+                <code>lowest</code> can use two large learned pieces. <code>lower</code> can use
+                <code>low</code>, but its remaining letters stay separate because no
+                <code>e + r</code> rule was learned. <code>lovely</code> can use only
+                <code>l + o → lo</code>, so everything else falls back to individual characters.
+                The tokenizer does not create a new <code>lovely</code> token while encoding it.
+              </p>
+              <p>
+                <strong>What is the disadvantage?</strong> Frozen rules make token IDs stable, but
+                they also preserve the biases of the training corpus. Text similar to the training
+                data gets large, efficient pieces; unfamiliar words, languages, or technical terms
+                may be split into many small pieces.
+              </p>
+              <ul>
+                <li>
+                  <strong>Longer sequences:</strong> <code>lowest</code> uses 2 token positions,
+                  while <code>lovely</code> uses 5 in this example.
+                </li>
+                <li>
+                  <strong>More computation:</strong> the transformer must process every token, so
+                  more pieces require more work and consume more of the context window.
+                </li>
+                <li>
+                  <strong>Uneven efficiency:</strong> a language or subject that was rare in the
+                  training corpus may need far more tokens than common English text.
+                </li>
+                <li>
+                  <strong>Difficult to update:</strong> adding new vocabulary pieces later changes
+                  the token-ID system and normally requires updating or retraining the model's
+                  embedding and output layers.
+                </li>
+              </ul>
+              <p>
+                The text is still representable, so fallback is better than producing
+                <code>[UNK]</code>. The disadvantage is mainly <strong>inefficiency</strong>, not
+                loss of the original spelling.
+              </p>
+            </div>
+            <p>
+              BPE must know where one word ends and the next word begins. In <code>the cat</code>,
+              it may join letters inside <code>the</code>, such as <code>t + h → th</code>, or
+              inside <code>cat</code>, such as <code>c + a → ca</code>. But it must never join
+              <code>e + c</code>, because <code>e</code> belongs to <code>the</code> and
+              <code>c</code> belongs to <code>cat</code>.
+            </p>
+            <p>
+              The marker <code>&lt;/w&gt;</code> means “this word ends here.” The sentence can be
+              represented as <code>t h e &lt;/w&gt;</code> and <code>c a t &lt;/w&gt;</code>, so BPE knows
+              not to merge across the boundary.
+            </p>
+            <p>
+              The starting pieces depend on the BPE version. Character-level BPE starts with
+              letters such as <code>c</code>, <code>a</code>, and <code>t</code>. Byte-level BPE
+              starts with byte values from 0 to 255. After that, both versions follow the same
+              basic process: count neighbouring pairs, merge common pairs, and stop at the chosen
+              limit.
+            </p>
+          </div>
+
+          <h3>Worked example: the classic four-word corpus</h3>
+          <p>
+            This is the corpus loaded in the lab below — four word types with their counts:
+          </p>
+          <p>
+            The <code>×</code> number tells you <strong>how many times that complete word appears
+            in the training corpus</strong>. For example, <code>low ×5</code> means the corpus
+            contains five copies of <code>low</code>, while <code>lower ×2</code> means it contains
+            two copies of <code>lower</code>. The word is shown only once here to keep the table
+            compact. <code>spelled</code> shows the starting character tokens, and
+            <code>&lt;/w&gt;</code> marks the end of the word.
+          </p>
+          <pre class="merge-log">low     ×5      spelled  l o w &lt;/w&gt;
+lower   ×2      spelled  l o w e r &lt;/w&gt;
+newest  ×3      spelled  n e w e s t &lt;/w&gt;
+widest  ×2      spelled  w i d e s t &lt;/w&gt;</pre>
+          <p>
+            Step 3 counts every adjacent pair. The pair <code>l</code>+<code>o</code> appears in
+            <code>low</code> (5 times) and in <code>lower</code> (2 times) — 7 occurrences, the
+            highest in the corpus. So it wins the first merge. Repeat, and BPE produces this exact
+            ordered merge list:
+          </p>
+          <p>
+            In the merge list, <code>freq</code> means <strong>the total number of times the
+            adjacent pair appears across the corpus at that step</strong>. Word counts are included
+            in that total. For example, <code>l + o</code> appears once inside each copy of
+            <code>low</code> and <code>lower</code>, so its frequency is
+            <code>5 + 2 = 7</code>. After it is merged into <code>lo</code>, the pair
+            <code>lo + w</code> also appears seven times. The frequency is recalculated after every
+            merge because the available token pairs have changed.
+          </p>
+          <pre class="merge-log">01  l + o        →  lo          freq 7
+02  lo + w       →  low         freq 7
+03  low + &lt;/w&gt;    →  low&lt;/w&gt;     freq 5
+04  e + s        →  es          freq 5
+05  es + t       →  est         freq 5
+06  est + &lt;/w&gt;    →  est&lt;/w&gt;     freq 5
+07  n + e        →  ne          freq 3
+08  ne + w       →  new         freq 3
+09  new + est&lt;/w&gt; →  newest&lt;/w&gt;  freq 3
+10  low + e      →  lowe        freq 2
+11  lowe + r     →  lower       freq 2
+12  lower + &lt;/w&gt;  →  lower&lt;/w&gt;   freq 2
+13  w + i        →  wi          freq 2
+14  wi + d       →  wid         freq 2
+15  wid + est&lt;/w&gt; →  widest&lt;/w&gt;  freq 2</pre>
+          <p>
+            After merge 15 no pair is left with frequency ≥ 2, so training stops on the guard
+            rather than the budget. Reproduce every line of this by dragging the slider in the
+            <a href="?tab=bpe#algo-labs">BPE lab</a> — the merge log there is generated by the same
+            algorithm.
+          </p>
+
+          <h3>Encoding a word BPE has never seen</h3>
+          <p>
+            This is the payoff. The word <code>lowest</code> is <strong>not</strong> in the
+            training corpus. To encode it, BPE spells it out in characters and then replays the
+            learned merges <em>in the order they were learned</em>:
+          </p>
+          <pre class="merge-log">start        l  o  w  e  s  t  &lt;/w&gt;
+after 01     lo w  e  s  t  &lt;/w&gt;        (l+o)
+after 02     low   e  s  t  &lt;/w&gt;        (lo+w)
+after 04     low   es t  &lt;/w&gt;           (e+s)
+after 05     low   est   &lt;/w&gt;           (es+t)
+after 06     low   est&lt;/w&gt;              (est+&lt;/w&gt;)
+
+result       ["low", "est&lt;/w&gt;"]  →  2 tokens, decodes back to "lowest"</pre>
+          <p>
+            Merge 03 (<code>low</code>+<code>&lt;/w&gt;</code>) does not apply, because in
+            <code>lowest</code> the piece <code>low</code> is not followed by the end of the word.
+            That is precisely why the <code>&lt;/w&gt;</code> mark exists: it lets BPE distinguish
+            “low as a complete word” from “low as the start of a longer word.”
+          </p>
+          <div class="callout">
+            <strong>Advantage and tradeoff.</strong> The advantage is <strong>total coverage</strong>:
+            BPE can represent a word it has never seen by using smaller known pieces, so byte-level
+            BPE never needs <code>[UNK]</code>. The disadvantage is <strong>inefficiency</strong>:
+            an uncommon word may need many tokens, which uses more context space and computation.
+            In the worst case, the tokenizer emits one character or one byte at a time.
+          </div>
+
+          <h3>The <code>strawberry</code> and <code>blueberry</code> problem</h3>
+          <p>
+            People see the shared ending <code>berry</code> immediately. BPE does not begin with
+            that meaning. It only learns whichever neighbouring pieces were frequent in its
+            training corpus. One tokenizer might produce:
+          </p>
+          <pre class="merge-log">strawberry  →  straw + berry       2 tokens
+blueberry   →  blue  + berry       2 tokens</pre>
+          <p>
+            Another tokenizer, trained on different text or with a smaller vocabulary, might
+            split the same words less neatly:
+          </p>
+          <pre class="merge-log">strawberry  →  str + aw + ber + ry     4 tokens
+blueberry   →  blue + b + err + y      4 tokens</pre>
+          <p>
+            Both tokenizations are valid because every piece joins back into the original word.
+            The second version is less efficient and does not expose <code>berry</code> as one
+            reusable piece. It can also make questions such as “How many <code>r</code>s are in
+            <code>strawberry</code>?” harder: the model receives token IDs for chunks, not a tidy
+            list of individual letters. Tokenization contributes to that difficulty, although it
+            is not the only reason a language model may answer a spelling question incorrectly.
+            The exact split depends on the tokenizer, so always inspect the real tokens instead of
+            assuming these example splits.
+          </p>
+
+          <h3>What BPE is not</h3>
+          <ul>
+            <li>
+              <strong>Not a morphological analyser.</strong> <code>est</code> emerged because that
+              pair was frequent, not because English has a superlative suffix. On a different
+              corpus you get different pieces, and plenty of them straddle real morpheme
+              boundaries.
+            </li>
+            <li>
+              <strong>Not optimal.</strong> Greedy means locally best at each step. There is no
+              guarantee that this merge sequence is the best possible vocabulary of that size —
+              only that it is cheap to compute and works well in practice.
+            </li>
+            <li>
+              <strong>Not the same at train and encode time.</strong> Training <em>discovers</em>
+              the ordered merge list from counts. Encoding just <em>replays</em> that fixed list.
+              No new tokens are ever invented at inference time.
+            </li>
+          </ul>
+
+          <p class="exit-ticket">
+            <strong>Leave when:</strong> you can state BPE’s stop condition correctly, and explain
+            why running the merge loop “until no more pairs appear” would defeat the purpose.
+          </p>
+          <p class="diagram-link">
+            Schematic:
+            <a href="diagrams/03-bpe-train.html">BPE train loop</a>
+          </p>
+        </section>
+
+        <section id="algo-labs" class="wide">
+          <h2>Algorithm labs</h2>
+          <p>
+            This lab lets you compare BPE, WordPiece, and SentencePiece on the same
+            <strong>corpus</strong> (the text used to learn token pieces). Because all three
+            trainers receive the same text, you can see how their different learning rules create
+            different vocabularies and word splits.
+          </p>
+          <p>
+            Choose an algorithm, move the slider to control how much it learns, and enter a
+            <strong>probe</strong> word to see how the trained tokenizer splits new text. The
+            browser versions are simplified so you can inspect every step. The Jupyter notebooks
+            later in the lesson repeat the experiments with the production libraries HuggingFace
+            <code>tokenizers</code> and <code>sentencepiece</code> 0.2.2.
+          </p>
+
+          <div class="lab">
+            <div class="lab-head">
+              <h3>Subword trainers</h3>
+              <div class="metrics" id="algo-metrics"></div>
+            </div>
+
+            <div class="tabs" role="tablist" aria-label="Tokenizer algorithm">
+              <button type="button" role="tab" id="tab-bpe" aria-selected="true" data-algo="bpe">BPE</button>
+              <button type="button" role="tab" id="tab-wp" aria-selected="false" data-algo="wordpiece">WordPiece</button>
+              <button type="button" role="tab" id="tab-sp" aria-selected="false" data-algo="sentencepiece">SentencePiece</button>
+            </div>
+
+            <div class="sp-modes hidden" id="sp-modes">
+              <button type="button" data-sp-mode="unigram" aria-pressed="true">Unigram</button>
+              <button type="button" data-sp-mode="bpe" aria-pressed="false">BPE mode</button>
+            </div>
+
+            <div class="row" role="group" aria-label="Corpus presets">
+              <button type="button" class="preset" data-corpus="sennrich" aria-pressed="true">Sennrich toy</button>
+              <button type="button" class="preset" data-corpus="course" aria-pressed="false">Course corpus</button>
+              <button type="button" id="predict-toggle" aria-pressed="true">Predict on</button>
+            </div>
+            <p class="corpus-note">
+              <strong>Sennrich toy</strong> = four word types (<code>low</code> / <code>lower</code> /
+              <code>newest</code> / <code>widest</code>) so WordPiece can form
+              <code>low</code> + <code>##est</code>. <strong>Course corpus</strong> matches
+              <code>data/tiny_corpus.txt</code> used by HuggingFace / SentencePiece cells in the
+              notebooks — merges will differ. That is expected.
+            </p>
+
+            <label for="algo-corpus">Corpus</label>
+            <textarea id="algo-corpus" rows="4">low low low low low
+lower lower
+newest newest newest
+widest widest</textarea>
+
+            <div class="slider-row">
+              <label for="algo-step"><span id="algo-step-caption">Merges</span>: <strong id="algo-step-value">8</strong></label>
+              <input id="algo-step" type="range" min="0" max="20" value="8" />
+            </div>
+            <p id="algo-step-hint" class="slider-hint">Slider 0–20 = number of merge steps</p>
+
+            <label for="algo-probe">Probe</label>
+            <input id="algo-probe" type="text" value="lowest newest unhappiness" />
+
+            <p class="algo-rule" id="algo-rule"></p>
+            <p id="algo-predict" class="predict-prompt" hidden></p>
+            <button type="button" id="algo-reveal" hidden>Reveal pieces</button>
+
+            <div class="pane pane-fixed">
+              <div class="pane-head">
+                <h4>Encoded pieces</h4>
+                <span class="count" id="algo-count">0</span>
+              </div>
+              <div class="chips" id="algo-chips"></div>
+            </div>
+            <p id="algo-decode" class="decode-line"></p>
+            <pre class="merge-log" id="algo-log"></pre>
+          </div>
+
+          <h3>Same probe, three encodings</h3>
+          <p>
+            Frozen to the corpus, slider, and probe above. Switch SentencePiece Unigram/BPE with
+            the mode buttons — the third column follows.
+          </p>
+          <div class="grid-3" id="compare-panes"></div>
+
+          <div class="callout">
+            Default corpus is the Sennrich toy set so WordPiece can form <code>low</code> +
+            <code>##est</code>. Paste the course corpus and watch WordPiece prefer rare pairs
+            like <code>qu</code> — that is the likelihood score doing its job, and why production
+            models train on huge text.
+          </div>
+          <p class="exit-ticket">
+            <strong>Ready to move on when:</strong> you can explain why BPE, WordPiece, and
+            SentencePiece split the same word into different pieces. The tokenizers agree on the
+            word; they just disagree on where to split it.
+          </p>
+        </section>
+
+        <section id="character">
+          <h2>Character level</h2>
+          <p>
+            A character-level tokenizer usually gives each Unicode <em>code point</em> its own
+            token ID. Its vocabulary contains the distinct characters found in the training text.
+            An English-focused vocabulary may contain around one hundred letters, digits,
+            punctuation marks, and special symbols. A multilingual vocabulary may need thousands.
+          </p>
+          <p>However, one visible symbol is not always one code point:</p>
+          <ul>
+            <li>
+              <strong>JavaScript can count one emoji as two.</strong> JavaScript's
+              <code>"👋".length</code> is <code>2</code> because <code>length</code> counts UTF-16
+              code units. Use <code>Array.from(text)</code> to iterate over code points. Python's
+              <code>for ch in text</code> already iterates over code points.
+            </li>
+            <li>
+              <strong>One symbol can contain several code points.</strong> What a reader sees as
+              one symbol is called a <em>grapheme cluster</em>. An accented letter can be stored as
+              one code point, such as <code>é</code>, or as <code>e</code> followed by a separate
+              accent code point. Therefore, <code>café</code> can contain four or five code points
+              even though it looks identical on screen.
+            </li>
+          </ul>
+          <p>
+            Try <code>café</code>, emoji, Bengali text, and a combining accent in the
+            <a href="#lab">Four-way lab</a>. Compare the character count with the UTF-8 byte
+            count to see the difference yourself.
+          </p>
+          <p class="exit-ticket">
+            <strong>Ready to move on when:</strong> you can explain why <code>👋</code> looks like
+            one symbol even though JavaScript reports <code>"👋".length</code> as <code>2</code>.
+          </p>
+        </section>
+
+        <section id="byte" class="wide">
+          <h2>Byte level</h2>
+          <p>
+            Computers store UTF-8 text as <strong>bytes</strong>. A byte is simply a number from
+            <code>0</code> to <code>255</code>, so there are exactly 256 possible byte values. A
+            byte-level tokenizer begins with one token for each of those values. This small base
+            vocabulary can represent any valid UTF-8 text, including unfamiliar names, emoji,
+            code, and mixed languages. If no larger token matches, the tokenizer can always fall
+            back to the original bytes instead of producing <code>[UNK]</code>.
+          </p>
+          <p>
+            The disadvantage is that raw bytes can create long sequences. The letter
+            <code>A</code> uses one UTF-8 byte, but <code>👋</code> uses four. Without any learned
+            shortcuts, that one emoji would therefore require four byte tokens.
+          </p>
+
+          <h3>What does “BPE on top of bytes” mean?</h3>
+          <p>
+            BPE starts with individual bytes and repeatedly joins byte sequences that appear
+            together often. Think of each learned merge as a shortcut. For example, the word
+            <code>cat</code> has these UTF-8 bytes, written in hexadecimal:
+          </p>
+          <pre class="merge-log">text               cat
+UTF-8 bytes        63  61  74
+starting tokens    [63] [61] [74]
+
+learn 63 + 61      [6361] [74]       2 tokens
+learn 6361 + 74    [636174]           1 token</pre>
+          <p>
+            The final token still represents the same three bytes; BPE has only grouped them into
+            one frequently used piece. Decoding expands the piece back to
+            <code>63 61 74</code>, and UTF-8 turns those bytes back into <code>cat</code>.
+          </p>
+          <p>The same idea applies to text that needs several bytes per visible symbol:</p>
+          <pre class="merge-log">text               👋
+UTF-8 bytes        F0  9F  91  8B
+no useful merges   [F0] [9F] [91] [8B]    4 tokens
+learned sequence   [F09F918B]              1 token</pre>
+          <p>
+            Whether the emoji becomes one token depends on the training corpus and vocabulary
+            budget. A common byte sequence is likely to receive a shortcut; a rare sequence may
+            remain split into several tokens. Either way, every byte is still representable.
+          </p>
+          <div class="callout">
+            <strong>GPT-style byte BPE.</strong> GPT-2 and OpenAI's tiktoken encodings use this
+            byte-based BPE idea. GPT-2 maps raw byte values to visible Unicode symbols while it
+            learns and stores merges, because many raw bytes are not printable. The visible
+            symbols are an internal representation; each learned token ultimately stands for one
+            byte or a sequence of bytes. Modern vocabulary sizes vary by model and include these
+            learned byte sequences plus special tokens.
+          </div>
+
+          <h3>Why not just use Unicode code points as the vocabulary?</h3>
+          <p>
+            This is the obvious question, and it deserves a real answer. Unicode already numbers
+            every character. Python even hands you the number for free with
+            <code>ord("A") == 65</code>. Why not declare “vocabulary = Unicode” and skip training a
+            tokenizer entirely?
+          </p>
+          <p>
+            Because it loses on <em>both</em> of the axes a tokenizer is judged on, at the same
+            time.
+          </p>
+
+          <h4>Problem 1 — far too many tokens</h4>
+          <p>
+            One code point per token means no compression whatsoever. The sentence
+            <code>Tokenization is the first step of every language model.</code> is 9 words and
+            55 code points, so it costs <strong>55 tokens</strong>. A trained subword tokenizer
+            encodes the same sentence in about a dozen. Every token you spend is a position in the
+            context window and a step of attention — and attention cost grows quadratically with
+            sequence length, so a sequence roughly 4–5× longer is far more than 4–5× more
+            expensive.
+          </p>
+
+          <h4>Problem 2 — a huge and mostly dead vocabulary</h4>
+          <p>
+            A larger vocabulary requires the model to store and score more token IDs. This affects
+            both the beginning and the end of the transformer.
+          </p>
+          <ol class="steps">
+            <li>
+              <strong>At the beginning:</strong> the input embedding table stores one learned
+              vector for every token ID. If the vocabulary has 50,000 tokens, it needs 50,000
+              rows. Each row has <code>d_model</code> numbers describing that token.
+            </li>
+            <li>
+              <strong>At the end:</strong> the output layer compares the transformer's current
+              hidden state with every possible next token. It produces one raw score, called a
+              <strong>logit</strong>, for each vocabulary entry.
+            </li>
+            <li>
+              <strong>Softmax:</strong> converts those logits into probabilities. For example,
+              <code>cat: 0.60</code>, <code>dog: 0.25</code>, and all other tokens sharing the
+              remaining probability.
+            </li>
+          </ol>
+          <p>
+            The input table has shape <code>vocab_size × d_model</code>. The output projection has
+            the opposite shape, <code>d_model × vocab_size</code>, but both contain the same number
+            of values: <code>vocab_size × d_model</code>. Many models use <em>weight tying</em>,
+            which means these two layers share one set of parameters. Models without weight tying
+            pay this parameter cost twice.
+          </p>
+          <p>
+            Consider a small transformer with <code>d_model = 768</code>. One matrix needs:
+          </p>
+          <pre class="merge-log">number of parameters = vocabulary size × 768
+
+50,257 × 768 = 38,597,376 parameters ≈ 38.6 million</pre>
+          <p>The same calculation shows how quickly the cost grows:</p>
+          <div style="overflow-x: auto">
+            <table class="bytes-table">
+              <thead>
+                <tr>
+                  <th>Vocabulary</th>
+                  <th>Size</th>
+                  <th>Parameters in one matrix</th>
+                  <th>What this means</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Raw bytes</td>
+                  <td>256</td>
+                  <td>0.2 million</td>
+                  <td>Very small vocabulary, but raw text needs many tokens</td>
+                </tr>
+                <tr>
+                  <td>Example byte-level BPE</td>
+                  <td>50,257</td>
+                  <td>38.6 million</td>
+                  <td>Larger vocabulary, but common byte sequences become shorter</td>
+                </tr>
+                <tr>
+                  <td>Every assigned Unicode character</td>
+                  <td>159,801</td>
+                  <td>122.7 million</td>
+                  <td>Large table with many characters a particular model may rarely use</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            The Unicode table in this example needs about <strong>three times</strong> as many
+            parameters as the BPE table. The model must also produce and compare 159,801 logits at
+            every output position instead of 50,257. A bigger vocabulary can shorten token
+            sequences, but it also makes the embedding and output layers wider. Tokenizer design
+            is a balance between those two costs.
+          </p>
+          <p>
+            Worse, most of that table is dead weight. An English corpus touches maybe a hundred
+            distinct code points; the remaining ~159,700 rows receive almost no gradient and stay
+            essentially random. You would be paying for capacity you never train.
+          </p>
+
+          <h4>Problem 3 — it is still not closed</h4>
+          <p>
+            You might accept the cost for the guarantee that nothing is ever unknown. You do not
+            get that guarantee. A character-level vocabulary is built from <em>the characters in
+            your training corpus</em>, so any character outside it is still <code>[UNK]</code>. And
+            Unicode itself keeps growing — version 17.0 added 4,803 characters and 4 new scripts.
+            A vocabulary pinned to a Unicode version goes stale.
+          </p>
+
+          <div class="callout">
+            <strong>The verdict.</strong> Unicode-character tokenization gives you long sequences
+            <em>and</em> a large vocabulary <em>and</em> still no coverage guarantee — the worst
+            corner of the tradeoff. Bytes fix the second and third problems outright, and BPE on
+            top of bytes fixes the first.
+          </div>
+
+          <h3>Character level vs byte level, side by side</h3>
+          <div style="overflow-x: auto">
+            <table class="bytes-table">
+              <thead>
+                <tr>
+                  <th></th>
+                  <th>Character level (Unicode)</th>
+                  <th>Byte level (UTF-8)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Atomic unit</td>
+                  <td>One Unicode code point</td>
+                  <td>One byte, 0–255</td>
+                </tr>
+                <tr>
+                  <td>Base vocabulary size</td>
+                  <td>Open-ended — up to ~160,000 and growing every release</td>
+                  <td><strong>Fixed at exactly 256, forever</strong></td>
+                </tr>
+                <tr>
+                  <td>Unseen input</td>
+                  <td><code>[UNK]</code> — the spelling is lost</td>
+                  <td>Impossible; every byte is already in the vocabulary</td>
+                </tr>
+                <tr>
+                  <td>Reuse across scripts</td>
+                  <td>None. <code>é</code>, <code>e</code>, and <code>আ</code> are unrelated IDs with no shared structure</td>
+                  <td>Heavy. The same 256 atoms are reused by every script on earth</td>
+                </tr>
+                <tr>
+                  <td>Cost of one character</td>
+                  <td>Always 1 token</td>
+                  <td>1–4 tokens before merges; usually back under 1 after BPE</td>
+                </tr>
+                <tr>
+                  <td>Rows that stay untrained</td>
+                  <td>The vast majority, on any single-language corpus</td>
+                  <td>Essentially none — all 256 bytes get used</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            The byte column’s “1–4 tokens per character” looks like a loss, and on raw bytes it is:
+            <code>বাংলা ভাষা</code> is 10 code points but 28 UTF-8 bytes. But those bytes are only
+            the <em>starting</em> alphabet. BPE then merges the recurring byte sequences of Bengali
+            into single pieces, and the sequence collapses back down. You get the coverage of bytes
+            with the length of subwords.
+          </p>
+
+          <h3>Byte fallback: the hybrid most models actually ship</h3>
+          <p>
+            You do not have to choose one or the other. <strong>Byte fallback</strong> keeps a
+            normal subword vocabulary for everything common, and drops to raw bytes only for
+            things that vocabulary cannot express:
+          </p>
+          <ul>
+            <li>
+              Text that matches a learned piece → encoded as that piece, as usual.
+            </li>
+            <li>
+              Anything else — a rare script, a brand-new emoji, a corrupted byte — is emitted as
+              individual byte tokens such as <code>&lt;0xF0&gt;</code> <code>&lt;0x9F&gt;</code>
+              <code>&lt;0x98&gt;</code> <code>&lt;0x8A&gt;</code>.
+            </li>
+          </ul>
+          <p>
+            The result is that <code>[UNK]</code> never appears and decoding is always exact, at
+            the price of a few extra tokens in rare cases. This is SentencePiece’s
+            <code>byte_fallback</code> option, and it is what the Llama tokenizers use. It is the
+            practical answer to “what if something cannot be represented?” — the fallback is the
+            raw byte.
+          </p>
+
+          <div class="lab">
+            <div class="lab-head">
+              <h3>UTF-8 inspector</h3>
+              <span class="lab-tag">Bytes</span>
+            </div>
+            <label for="inspect-text">Inspect graphemes, code points, and bytes</label>
+            <input id="inspect-text" type="text" value="café 👋 বাংলা" />
+            <div class="row">
+              <button type="button" class="preset" data-inspect-preset="hello" aria-pressed="false">hello</button>
+              <button type="button" class="preset" data-inspect-preset="café" aria-pressed="false">café</button>
+              <button type="button" class="preset" data-inspect-preset="Straße" aria-pressed="false">German</button>
+              <button type="button" class="preset" data-inspect-preset="français" aria-pressed="false">French</button>
+              <button type="button" class="preset" data-inspect-preset="👋" aria-pressed="false">emoji</button>
+              <button type="button" class="preset" data-inspect-preset="বাংলা" aria-pressed="false">Bengali</button>
+              <button type="button" class="preset" data-inspect-preset="日本語" aria-pressed="false">Japanese</button>
+              <button type="button" class="preset" data-inspect-preset="é" aria-pressed="false">e + combining acute</button>
+            </div>
+            <p id="inspect-note" class="algo-rule"></p>
+            <div class="inspect-table-wrap">
+              <table class="bytes-table inspect-table">
+                <thead>
+                  <tr>
+                    <th>Grapheme</th>
+                    <th>Code point(s)</th>
+                    <th>CP #</th>
+                    <th>UTF-8 bytes</th>
+                    <th>Byte #</th>
+                  </tr>
+                </thead>
+                <tbody id="inspect-body"></tbody>
+              </table>
+            </div>
+          </div>
+          <p class="exit-ticket">
+            <strong>Leave when:</strong> you can read one row of the inspector and separate
+            grapheme / code point / byte counts.
+          </p>
+        </section>
+
+        <section id="length" class="wide">
+          <h2>Vocabulary size, context length, and sequence length</h2>
+          <p class="lede">
+            Three numbers that beginners routinely merge into one. They are independent, they are
+            set at different times, and confusing them produces confident nonsense about what a
+            model can do.
+          </p>
+
+          <h3>Does “1B” mean one billion vocabulary tokens?</h3>
+          <p>
+            No. In a model name such as <code>Llama 3.2 1B</code>, the <code>1B</code> means the
+            neural network has roughly <strong>one billion learned parameters</strong>. Likewise,
+            <code>7B</code> means about seven billion parameters and <code>70B</code> means about
+            seventy billion. The letter <code>B</code> means <em>billion</em>; it does not describe
+            the tokenizer vocabulary.
+          </p>
+          <p>
+            A <strong>parameter</strong> is a number adjusted while the model is trained. Together,
+            billions of these numbers let the network learn language patterns and store useful
+            information. Parameters are spread across the embedding layer, attention layers,
+            feed-forward layers, and other parts of the model.
+          </p>
+          <div style="overflow-x: auto">
+            <table class="bytes-table">
+              <thead>
+                <tr>
+                  <th>Number</th>
+                  <th>What it measures</th>
+                  <th>Example meaning</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>1B</code>, <code>7B</code>, <code>70B</code></td>
+                  <td>Total model parameters</td>
+                  <td>Approximately 1, 7, or 70 billion learned numbers</td>
+                </tr>
+                <tr>
+                  <td><code>vocab_size: 128256</code></td>
+                  <td>Tokenizer vocabulary</td>
+                  <td>128,256 different token IDs are available</td>
+                </tr>
+                <tr>
+                  <td><code>context_length: 131072</code></td>
+                  <td>Context capacity</td>
+                  <td>Up to 131,072 token positions can fit in one request</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            These numbers do not have to grow together. A two-billion-parameter model can use a
+            vocabulary of 32,000 tokens, 128,000 tokens, or another size chosen by its designers.
+            To find the real vocabulary size, check the model configuration or tokenizer files
+            for a field such as <code>vocab_size</code>.
+          </p>
+          <div class="callout">
+            <strong>How vocabulary contributes to parameters.</strong> If a model has a vocabulary
+            of <code>V</code> tokens and each token embedding contains <code>D</code> numbers, its
+            embedding table contains <code>V × D</code> parameters. A larger vocabulary therefore
+            increases the model's parameter count, but it does not determine the model's name.
+            Most parameters are usually in the transformer blocks, although embeddings can take a
+            noticeable share of a small model with a large vocabulary.
+          </div>
+          <pre class="merge-log">model name:       7B              → total learned parameters
+tokenizer config: vocab_size      → number of available token IDs
+model config:     context_length  → maximum token positions per request</pre>
+
+          <h3>What a vocabulary size of 50,257 actually means</h3>
+          <p>
+            GPT-2’s vocabulary size is 50,257. That number is not arbitrary — it decomposes
+            exactly:
+          </p>
+          <div style="overflow-x: auto">
+            <table class="bytes-table">
+              <thead>
+                <tr>
+                  <th>Component</th>
+                  <th>Count</th>
+                  <th>What it is</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Base byte tokens</td>
+                  <td>256</td>
+                  <td>Every possible UTF-8 byte — the atoms nothing can fall through</td>
+                </tr>
+                <tr>
+                  <td>Learned merges</td>
+                  <td>50,000</td>
+                  <td>The merge budget BPE was given during training</td>
+                </tr>
+                <tr>
+                  <td>Special token</td>
+                  <td>1</td>
+                  <td><code>&lt;|endoftext|&gt;</code></td>
+                </tr>
+                <tr>
+                  <td><strong>Total</strong></td>
+                  <td><strong>50,257</strong></td>
+                  <td></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="callout">
+            <strong>Read this carefully.</strong> A vocabulary size of 50,257 means there are
+            50,257 unique <em>token pieces</em> — <strong>not</strong> 50,257 words. Most entries
+            are not words at all: single bytes, punctuation, whitespace runs, and word fragments
+            like <code>ing</code>, <code>tion</code>, or <code> the</code> (with its leading space
+            attached).
+          </div>
+          <p>
+            And because pieces <strong>combine</strong>, the set of strings the tokenizer can
+            represent is not capped at 50,257. A word that is not in the vocabulary is simply split
+            into smaller pieces that are, then reassembled on decode:
+          </p>
+          <pre class="merge-log">unhappiness       →  un + happiness              2 pieces
+tokenization      →  token + ization             2 pieces
+Kubernetes        →  Kub + ernet + es            3 pieces
+zyxwvu            →  z + y + x + w + v + u       6 pieces (worst case: one per byte)</pre>
+          <p>
+            Sequences of pieces multiply. With 50,257 pieces, even two-piece combinations already
+            exceed two billion distinct strings, and there is no limit on sequence length.
+            Therefore <strong>BPE can represent vastly more than 50,257 words</strong> — in fact
+            every string that can be written in UTF-8, including words that will be invented next
+            year. The vocabulary size caps how <em>efficiently</em> text is encoded, never
+            <em>whether</em> it can be encoded.
+          </p>
+          <p>
+            That is the whole reason bigger vocabularies keep shipping: more pieces means fewer
+            pieces per sentence, not more words covered. Coverage was already total.
+          </p>
+          <div style="overflow-x: auto">
+            <table class="bytes-table">
+              <thead>
+                <tr>
+                  <th>Tokenizer</th>
+                  <th>Algorithm</th>
+                  <th>Vocabulary size</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>BERT base uncased</td>
+                  <td>WordPiece</td>
+                  <td>30,522</td>
+                </tr>
+                <tr>
+                  <td>Llama 2</td>
+                  <td>SentencePiece BPE</td>
+                  <td>32,000</td>
+                </tr>
+                <tr>
+                  <td>GPT-2 (<code>r50k_base</code>)</td>
+                  <td>Byte-level BPE</td>
+                  <td>50,257</td>
+                </tr>
+                <tr>
+                  <td>GPT-4 (<code>cl100k_base</code>)</td>
+                  <td>Byte-level BPE</td>
+                  <td>100,277</td>
+                </tr>
+                <tr>
+                  <td>Llama 3</td>
+                  <td>Byte-level BPE</td>
+                  <td>128,256</td>
+                </tr>
+                <tr>
+                  <td>GPT-4o (<code>o200k_base</code>)</td>
+                  <td>Byte-level BPE</td>
+                  <td>200,019</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>Vocabulary size is not context length</h3>
+          <p>
+            These answer two completely different questions:
+          </p>
+          <dl class="dl">
+            <div>
+              <dt>Vocab size</dt>
+              <dd>
+                How many <em>different</em> tokens exist. The size of the dictionary. Fixed when
+                the tokenizer is trained, and frozen for the life of the model — changing it means
+                retraining the embedding table.
+              </dd>
+            </div>
+            <div>
+              <dt>Context length</dt>
+              <dd>
+                How many tokens the model can process <em>at once</em>. The number of positions in
+                the window. Set by the model architecture and training, and has nothing to do with
+                how many distinct tokens exist.
+              </dd>
+            </div>
+            <div>
+              <dt>Sequence length</dt>
+              <dd>
+                How many tokens <em>your particular input</em> came out as. Varies per input, and
+                must fit inside the context length.
+              </dd>
+            </div>
+          </dl>
+          <p>
+            GPT-2 makes the independence obvious: vocabulary <strong>50,257</strong>, context
+            length <strong>1,024</strong>. The dictionary has fifty thousand entries; the model can
+            read a thousand tokens at a time. Neither number constrains the other.
+          </p>
+          <div class="callout">
+            <strong>Analogy.</strong> Vocabulary size is how many words are in your dictionary.
+            Context length is how many words you can hold in your head at once. Learning more
+            words does not enlarge your working memory — but it does let you say the same thing in
+            fewer words, so more meaning fits.
+          </div>
+          <p>
+            That last clause is the one real connection between them. A larger vocabulary does not
+            change the context length, but it lowers the token count of the same text, so
+            <em>more text</em> fits in the same window. This is why <code>o200k_base</code> encodes
+            non-English text in noticeably fewer tokens than <code>cl100k_base</code> despite the
+            window being a property of the model, not the tokenizer.
+          </p>
+
+          <h3>See the tradeoff</h3>
+          <p>
+            Same sentence, four granularities. The bars are token counts. This is the tradeoff
+            every tokenizer paper is negotiating.
+          </p>
+          <div class="lab">
+            <div class="lab-head">
+              <h3>Length comparison</h3>
+              <span class="lab-tag">Counts</span>
+            </div>
+            <label for="length-text">Sentence</label>
+            <textarea id="length-text" rows="2">Tokenization is the first step of every language model.</textarea>
+            <div id="length-bars"></div>
+            <p id="length-legend" class="algo-rule"></p>
+          </div>
+          <h3>Why don’t modern models use word-level tokenization if it uses fewer tokens?</h3>
+          <p>
+            Word-level tokenization looks efficient in this chart because every word in the sample
+            sentence is familiar. In real text, that advantage quickly breaks down.
+          </p>
+          <ol class="steps">
+            <li>
+              <strong>An unknown word loses its identity.</strong> A word vocabulary is frozen
+              before model training. If <code>COVID-19</code>, <code>useState</code>, a username, a
+              rare name, or a misspelling is missing, the tokenizer returns <code>[UNK]</code>. The
+              model does not receive the word's spelling, so it cannot see which known parts it
+              contains. A subword tokenizer can preserve that information using smaller pieces;
+              byte-based subwords can always fall back to bytes.
+            </li>
+            <li>
+              <strong>Related word forms become unrelated IDs.</strong> A word tokenizer stores
+              <code>play</code>, <code>plays</code>, <code>played</code>, and <code>playing</code> as
+              four independent entries. Subwords can reuse pieces such as <code>play</code>,
+              <code>ed</code>, and <code>ing</code>. This matters even more for languages with many
+              word forms and productive compounds, including Turkish, Finnish, Arabic, and
+              German.
+            </li>
+            <li>
+              <strong>Better coverage requires an enormous vocabulary.</strong> Adding more whole
+              words reduces <code>[UNK]</code>, but every entry needs an embedding and an output
+              score. A vocabulary with hundreds of thousands of words makes those layers larger
+              and makes next-token scoring more expensive. Rare entries may still appear too few
+              times to learn useful representations.
+            </li>
+            <li>
+              <strong>Multilingual text does not fit neatly into one word list.</strong> A shared
+              word vocabulary would need entries for words from every supported language, plus
+              mixed-language text, emoji, and code. Subword and byte-based tokenizers reuse a
+              smaller set of pieces across all of them.
+            </li>
+            <li>
+              <strong>The token saving is smaller than it first appears.</strong> Keeping a common
+              word as one token instead of two saves one position. That modest saving is not worth
+              losing every rare or newly invented word. Subwords accept slightly longer sequences
+              for common text in exchange for reliable coverage of the long tail.
+            </li>
+          </ol>
+          <pre class="merge-log">training vocabulary contains:  play, football, the
+
+word level
+playing      → [UNK]
+footballer   → [UNK]
+useState     → [UNK]
+
+subword level
+playing      → play + ing
+footballer   → football + er
+useState     → use + State</pre>
+          <div class="callout">
+            <strong>The real tradeoff.</strong> Word-level tokenization gives the shortest sequence
+            for known words, but fails on unknown words and needs a vocabulary that grows with
+            every language and word form. Subwords use a few more token positions, but keep the
+            vocabulary manageable, reuse structure, and preserve unfamiliar text. That is why
+            modern language models generally choose subword or byte-based subword tokenization.
+          </div>
+          <p class="exit-ticket">
+            <strong>Leave when:</strong> you can say which bar is <em>not</em> a production
+            tokenizer, and explain to someone else why a 50,257-piece vocabulary can represent far
+            more than 50,257 words while saying nothing at all about context length.
+          </p>
+          <p class="diagram-link">
+            Schematic:
+            <a href="diagrams/02-granularity.html">Vocab vs length layers</a>
+          </p>
+        </section>
+
+        <section id="visuals">
+          <h2>Visuals</h2>
+          <p>
+            Five printable schematics (Token Lab cyan on light paper). Open full-page for
+            projectors — better than mermaid fences when Jupyter does not render diagrams.
+          </p>
+          <div class="notebooks">
+            <div class="nb">
+              <strong><a href="diagrams/01-pipeline.html">01 · Tokenizer pipeline</a></strong>
+              <span>Raw → normalize → pre-tokenize → model → IDs → decode</span>
+            </div>
+            <div class="nb">
+              <strong><a href="diagrams/02-granularity.html">02 · Granularity tradeoff</a></strong>
+              <span>Word / subword / character / byte layers</span>
+            </div>
+            <div class="nb">
+              <strong><a href="diagrams/03-bpe-train.html">03 · BPE train loop</a></strong>
+              <span>Count pairs, pick max frequency, merge, repeat</span>
+            </div>
+            <div class="nb">
+              <strong><a href="diagrams/04-bpe-vs-wordpiece.html">04 · BPE vs WordPiece</a></strong>
+              <span>Frequency vs likelihood score, then shared glue</span>
+            </div>
+            <div class="nb">
+              <strong><a href="diagrams/05-detokenize-marks.html">05 · Detokenize marks</a></strong>
+              <span><code>&lt;/w&gt;</code>, <code>##</code>, and <code>▁</code> → string</span>
+            </div>
+          </div>
+          <p style="margin-top: 1rem">
+            Gallery:
+            <a href="diagrams/index.html">diagrams/</a>
+          </p>
+        </section>
+
+        <section id="glossary" class="wide">
+          <h2>Glossary</h2>
+          <dl class="dl glossary">
+            <div>
+              <dt>Unicode</dt>
+              <dd>
+                The universal standard that assigns a unique <em>code point</em> to every
+                character: <code>A</code> → <code>U+0041</code>, <code>😊</code> →
+                <code>U+1F60A</code>. It defines <em>which characters exist</em>, not how they are
+                stored.
+              </dd>
+            </div>
+            <div>
+              <dt>Code point</dt>
+              <dd>
+                One numbered entry in the Unicode catalogue, written <code>U+XXXX</code> in hex.
+                159,801 of the 1,114,112 possible code points are assigned as of Unicode 17.0.
+              </dd>
+            </div>
+            <div>
+              <dt>UTF-8</dt>
+              <dd>
+                The encoding that turns Unicode code points into bytes for storage and
+                transmission. ASCII characters take 1 byte; others take 2–4. Unicode defines the
+                characters, UTF-8 defines the bytes.
+              </dd>
+            </div>
+            <div>
+              <dt>Byte</dt>
+              <dd>A value 0–255. There are exactly 256 of them and that number never grows — the appeal of byte-level tokenizers.</dd>
+            </div>
+            <div>
+              <dt>Grapheme</dt>
+              <dd>What a reader calls “one character” on screen. May be several code points (a letter plus a combining accent, or an emoji sequence).</dd>
+            </div>
+            <div>
+              <dt>Byte fallback</dt>
+              <dd>
+                Emitting raw byte tokens such as <code>&lt;0xF0&gt;</code> for anything the subword
+                vocabulary cannot express. Removes <code>[UNK]</code> entirely. Used by the Llama
+                tokenizers via SentencePiece <code>byte_fallback</code>.
+              </dd>
+            </div>
+            <div>
+              <dt>Vocab size</dt>
+              <dd>
+                How many distinct token pieces exist. GPT-2: 50,257 = 256 bytes + 50,000 merges + 1
+                special token. Pieces, not words — they combine, so coverage is unlimited.
+              </dd>
+            </div>
+            <div>
+              <dt>Context length</dt>
+              <dd>
+                How many tokens the model can process at once. A property of the model, entirely
+                separate from vocab size.
+              </dd>
+            </div>
+            <div>
+              <dt>Logits</dt>
+              <dd>
+                The raw scores the final layer produces — one per vocabulary entry, before softmax.
+                A bigger vocabulary means a wider logit vector at every position.
+              </dd>
+            </div>
+            <div>
+              <dt>Embedding</dt>
+              <dd>The vector a token ID is looked up as. The lookup table is <code>vocab_size × d_model</code>, which is why vocab size costs parameters.</dd>
+            </div>
+            <div>
+              <dt>Greedy</dt>
+              <dd>Takes the best option available at the current step, with no lookahead and no backtracking. BPE merge selection is greedy.</dd>
+            </div>
+            <div>
+              <dt>OOV / [UNK]</dt>
+              <dd>Out of vocabulary. English: unknown word. বাংলা: অজানা শব্দ — the model sees a hole.</dd>
+            </div>
+            <div>
+              <dt>Type</dt>
+              <dd>A distinct vocabulary entry (the string), not each occurrence in a sentence.</dd>
+            </div>
+            <div>
+              <dt>Merge</dt>
+              <dd>BPE / WordPiece training step that glues two adjacent symbols into one new piece.</dd>
+            </div>
+            <div>
+              <dt><code>##</code></dt>
+              <dd>WordPiece continuation mark. <code>##est</code> continues a word; it does not start one.</dd>
+            </div>
+            <div>
+              <dt><code>&lt;/w&gt;</code></dt>
+              <dd>BPE end-of-word mark. Distinguishes the <code>st</code> in <code>star</code> from the end of <code>widest</code>.</dd>
+            </div>
+            <div>
+              <dt><code>▁</code> (U+2581)</dt>
+              <dd>SentencePiece space mark — not a plain underscore. Decoding turns each <code>▁</code> into a space.</dd>
+            </div>
+            <div>
+              <dt>NFKC</dt>
+              <dd>Unicode normalization form. Makes compatibility-equivalent characters look the same before training.</dd>
+            </div>
+          </dl>
+        </section>
+
+        <section id="notebooks">
+          <h2>Next: three algorithms in Jupyter</h2>
+          <p>
+            The labs above are intuition. The notebooks build the machines. Each one starts from
+            scratch on the Sennrich toy (or a tiny Viterbi demo), then repeats the same idea on
+            <code>data/tiny_corpus.txt</code> with the current PyPI libraries via <code>uv</code>.
+          </p>
+          <div class="notebooks">
+            <div class="nb">
+              <strong>01_bpe.ipynb — Byte Pair Encoding</strong>
+              <span>Frequent pair merges, HuggingFace <code>BpeTrainer</code>, then tiktoken as production BPE.</span>
+            </div>
+            <div class="nb">
+              <strong>02_wordpiece.ipynb — WordPiece</strong>
+              <span>Likelihood score instead of raw frequency, <code>##</code> continuation, BERT-style trainer.</span>
+            </div>
+            <div class="nb">
+              <strong>03_sentencepiece.ipynb — SentencePiece</strong>
+              <span>No whitespace pre-tokenizer, <code>▁</code> space mark, Unigram + BPE modes, sentencepiece 0.2.2 API.</span>
+            </div>
+          </div>
+          <p style="margin-top: 1.2rem">From the repo root:</p>
+          <div class="callout">
+            <code>uv sync</code><br />
+            <code>uv run jupyter lab notebooks</code>
+          </div>
+          <p>
+            Repo:
+            <a
+              href="https://github.com/gaurav36/tokenization-explanation"
+              target="_blank"
+              rel="noopener noreferrer"
+              >github.com/gaurav36/tokenization-explanation</a
+            >
+            · Live site:
+            <a href="https://gaurav36.github.io/tokenization-explainer/"
+              >gaurav36.github.io/tokenization-explainer</a
+            >
+          </p>
+
+          <h3>To do after Notebook 03</h3>
+          <p>
+            Tokenize the same real prompt with three model tokenizers and compare the results:
+          </p>
+          <ol class="steps">
+            <li>
+              <strong>BERT:</strong> use its WordPiece tokenizer and look for continuation pieces
+              marked with <code>##</code>.
+            </li>
+            <li>
+              <strong>GPT-4o:</strong> use its OpenAI <code>tiktoken</code> encoding and inspect how
+              spaces, punctuation, and UTF-8 text are grouped.
+            </li>
+            <li>
+              <strong>T5:</strong> use its SentencePiece tokenizer and look for the
+              <code>▁</code> symbol that represents a word-starting space.
+            </li>
+          </ol>
+          <p>
+            For each tokenizer, record the token pieces and token count. Then explain why the
+            counts differ even though the input text is identical. Use each model's real tokenizer:
+            <code>tiktoken</code> is appropriate for GPT-4o, but BERT and T5 require their own
+            tokenizer implementations.
+          </p>
+        </section>
+
+        <footer>
+          Tokenization teaching site ·
+          <a
+            href="https://github.com/gaurav36/tokenization-explanation"
+            target="_blank"
+            rel="noopener noreferrer"
+            >GitHub</a
+          >
+          ·
+          <a
+            href="https://github.com/gaurav36/tokenization-explanation/tree/main/notebooks"
+            target="_blank"
+            rel="noopener noreferrer"
+            >Notebooks</a
+          >
+          · MIT
+        </footer>
+      </main>
+    </div>
+    <script src="js/corpora.js"></script>
+    <script src="js/playgrounds.js"></script>
+    <script src="js/algorithms.js"></script>
+    <script src="js/main.js"></script>
+  </body>
+</html>
+
