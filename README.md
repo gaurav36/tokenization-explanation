@@ -98,7 +98,7 @@ Work through the notebooks in order:
 
 | Notebook | Topic |
 |---|---|
-| [`notebooks/01_bpe.ipynb`](notebooks/01_bpe.ipynb) | Frequency BPE from scratch (Sennrich), HuggingFace `BpeTrainer` (course corpus), then `tiktoken` |
+| [`notebooks/01_bpe.ipynb`](notebooks/01_bpe.ipynb) · [BPE Explained Colab playbook](https://colab.research.google.com/drive/1ML-CysqN4qKMJ-DFoJJdEz-aziVyvxbX?usp=sharing) | Frequency BPE from scratch (Sennrich), HuggingFace `BpeTrainer` (course corpus), then `tiktoken` |
 | [`notebooks/02_wordpiece.ipynb`](notebooks/02_wordpiece.ipynb) | Likelihood WordPiece from scratch, `##` continuation, `WordPieceTrainer` |
 | [`notebooks/03_sentencepiece.ipynb`](notebooks/03_sentencepiece.ipynb) | Unigram Viterbi intuition, then `sentencepiece` 0.2.2 (`return_type=`, not deprecated `out_type`) |
 
